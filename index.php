@@ -74,15 +74,7 @@ function generate_star_rating($rating) {
 <!DOCTYPE html>
 <html lang="gu-IN">
 <head>
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-67HSHXN9DV"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-67HSHXN9DV');
-</script>
+  
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shop Online for Fashion, Electronics & More | <?php echo $brandName; ?></title>
@@ -158,22 +150,7 @@ function generate_star_rating($rating) {
         .rating-stars .bi-star { color: #e0e0e0; }
         .fassured-logo-small { height: 16px; margin-left: 10px; }
     </style>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-YQZKNNT3TY"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
 
-  gtag('config', 'G-YQZKNNT3TY');
-</script>
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17423533065"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-17423533065');
-</script>
 </head>
 <body>
 
