@@ -238,8 +238,7 @@ $active_offer = 'b2g1';
                     $recommended_sql = "SELECT * FROM products WHERE category = ? AND id NOT IN (" . implode(',', array_fill(0, count($product_ids), '?')) . ") ORDER BY RAND() LIMIT 10";
                     $types = "s" . str_repeat('i', count($product_ids));
                     $params = array_merge([$safe_category], $product_ids);
-                    $recommended_array = get_cached_query_result($conn, $recommended_sql, $types, $params, $cache_file_rec, 600);
-
+                  $recommended_array = get_cached_query_result($conn, $recommended_sql, $types, $params);
                     if (!empty($recommended_array)):
                 ?>
                     <section class="suggestions-section">
