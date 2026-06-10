@@ -51,7 +51,7 @@ if (!empty($id_string)) {
     $sql = "SELECT * FROM products WHERE id IN (" . implode(',', array_fill(0, count($product_ids), '?')) . ")";
     $types = str_repeat('i', count($product_ids));
     $cart_hash = md5($id_string);
-    $cached_products = get_cached_query_result($conn, $sql, $types, $product_ids, $cache_file_cart_products, 300);
+    $cached_products = get_cached_query_result($conn, $recommended_sql, $types, $params);
     foreach ($cached_products as $item) {
         $products_from_db[$item['id']] = $item;
     }
@@ -226,7 +226,7 @@ if (isset($products_from_db[$last_product_id])) {
             $rec_sql = "SELECT * FROM products WHERE category = ? AND id NOT IN (" . implode(',', array_fill(0, count($product_ids), '?')) . ") ORDER BY RAND() LIMIT 10";
             $types = "s" . str_repeat('i', count($product_ids));
             $params = array_merge([$safe_category], $product_ids);
-            $recommended_array = get_cached_query_result($conn, $rec_sql, $types, $params, $cache_file_rec, 600); 
+            $recommended_array = get_cached_query_result($conn, $recommended_sql, $types, $params);
 
             if (!empty($recommended_array)):
         ?>
