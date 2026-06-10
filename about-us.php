@@ -2,66 +2,48 @@
 include('database/connection.php');
 session_start();
 
-// Define cache directory path and constants
-
-// The get_cached_query_result function.
-// It's defined here for self-containment of about-us.php,
-// assuming it might be accessed directly or without the main index.php context.
 if (!function_exists('get_cached_query_result')) {
     function get_cached_query_result($conn, $sql, $types, $params, $cache_file = null, $ttl = null) {
-    if (!$conn) return [];
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) return [];
-    if ($types && !empty($params)) { $stmt->bind_param($types, ...$params); }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-    return $data;
+        if (!$conn) return [];
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) return [];
+        if ($types && !empty($params)) { $stmt->bind_param($types, ...$params); }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
 }
-}
 
-
-// --- PHP for site settings and categories (needed for header and footer) ---
-
-// Define brandName (default and from settings if available)
 $brandName = 'YourStore';
 if ($conn) {
     $settings_sql = "SELECT setting_value FROM settings WHERE setting_key = 'brand_name' LIMIT 1";
-    $cache_file_settings = null;
-    $settings_data = get_cached_query_result($conn, $settings_sql, null, [], $cache_file_settings, CACHE_EXPIRATION_SETTINGS);
+    $settings_data = get_cached_query_result($conn, $settings_sql, null, []);
     if (!empty($settings_data)) {
         $brandName = htmlspecialchars($settings_data[0]['setting_value']);
     }
 }
 
-
-$pwebsite = ''; // Base website URL
+$pwebsite = '';
 if ($conn) {
     $site_sql = "SELECT site FROM credentials LIMIT 1";
-    $cache_file_site = null;
-    $site_data = get_cached_query_result($conn, $site_sql, null, [], $cache_file_site, CACHE_EXPIRATION_SETTINGS);
+    $site_data = get_cached_query_result($conn, $site_sql, null, []);
     if (!empty($site_data)) {
         $pwebsite = rtrim($site_data[0]['site'], '/');
     }
 }
 
-// Fetch all unique categories for the offcanvas menu and footer
 $categories_sql = "SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category ASC";
-$cache_file_categories = null;
-$all_categories_data = get_cached_query_result($conn, $categories_sql, null, [], $cache_file_categories, CACHE_EXPIRATION_CATEGORIES);
+$all_categories_data = get_cached_query_result($conn, $categories_sql, null, []);
 $all_categories = [];
 foreach ($all_categories_data as $row) {
     $all_categories[] = $row['category'];
 }
 
-// Calculate cart count (for header)
 $cart_count = (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) ? array_sum($_SESSION['cart']) : 0;
-
-// Canonical URL generation
 $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off') || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-
 ?>
 <!DOCTYPE html>
 <html lang="gu-IN">
@@ -76,15 +58,12 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     <meta property="og:type" content="website" />
     <meta property="og:url" content="<?php echo htmlspecialchars($canonical_url); ?>" />
     <meta property="og:site_name" content="<?php echo $brandName; ?>" />
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
-    <!-- Include your main styles if they are in a separate file, or replicate them here if inline. -->
     <style>
         body { background-color: #f1f2f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
         .main-container { max-width: 1248px; margin: 0 auto; background-color: #fff; }
-
         .page-header { background-color: #FFFFFF; padding: 8px 16px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.1); }
         .top-bar { display: flex; justify-content: space-between; align-items: center; }
         .logo-container .logo-img { height: 38px; vertical-align: middle; }
@@ -95,18 +74,6 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         .search-bar { display: flex; align-items: center; background-color: #f0f2f5; border-radius: 8px; padding: 10px 16px; }
         .search-icon { width: 20px; height: 20px; margin-right: 12px; opacity: 0.6; }
         .search-bar input { border: none; outline: none; width: 100%; font-size: 14px; background-color: transparent; }
-
-        /* Styles for the offcanvas menu and footer in footer.php */
-        /* You might want to move these to a shared CSS file if you use them on many pages */
-        .offcanvas-header { background-color: #d81b60; color: white; }
-        .offcanvas-body .nav-link, .offcanvas-body .dropdown-item { color: #212121; }
-        .offcanvas-body .nav-link i { margin-right: 8px; }
-
-        footer.bg-dark.text-white.mt-5 { margin-top: 0 !important; background-color: #343a40 !important; padding: 20px 0; font-size: 0.9rem; }
-        footer a { color: #f8f9fa; text-decoration: none; }
-        footer a:hover { color: #d81b60; } /* primary-color from second snippet */
-        footer .list-unstyled li { margin-bottom: 5px; }
-
         .about-content { padding: 30px; line-height: 1.6; }
         .about-content h1, .about-content h2 { color: #333; margin-bottom: 20px; }
         .about-content p { color: #555; margin-bottom: 15px; }
@@ -115,26 +82,23 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     </style>
 </head>
 <body>
-
 <div class="main-container">
     <header class="page-header">
         <div class="top-bar">
-            <!-- Offcanvas Menu Button for Mobile -->
-            <button class="btn p-0 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideMenu" aria-label="Open Menu">
-                <i class="bi bi-list" style="color: #212121; font-size: 24px;"></i>
-            </button>
-            <div class="logo-container">
-               <img src="<?php echo $pwebsite ?>/assets/catogary/svg-image-1.svg" alt="Logo" class="logo-img">
+            <div class="d-flex align-items-center">
+                <button class="btn p-0 d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideMenu" aria-label="Open Menu">
+                    <i class="bi bi-list" style="color: #212121; font-size: 24px;"></i>
+                </button>
+                <div class="logo-container">
+                    <img src="<?php echo $pwebsite ?>/assets/catogary/svg-image-1.svg" alt="Logo" class="logo-img">
+                </div>
             </div>
             <div class="cart-link">
                 <a href="cart">
-                     <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#212121"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-1.45-5c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.37-.66-.11-1.48-.87-1.48H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.24 17 6.5 17h12v-2H6.5c-.25 0-.42-.21-.38-.45l.93-1.68h7.45z"/></svg>
-                   <?php
-                        $cart_count = (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) ? array_sum($_SESSION['cart']) : 0;
-                        if ($cart_count > 0) {
-                            echo '<span class="badge bg-danger rounded-pill">' . $cart_count . '</span>';
-                        }
-                    ?>
+                    <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#212121"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-1.45-5c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.37-.66-.11-1.48-.87-1.48H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.24 17 6.5 17h12v-2H6.5c-.25 0-.42-.21-.38-.45l.93-1.68h7.45z"/></svg>
+                    <?php if ($cart_count > 0): ?>
+                        <span class="badge bg-danger rounded-pill"><?php echo $cart_count; ?></span>
+                    <?php endif; ?>
                 </a>
             </div>
         </div>
@@ -156,12 +120,12 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
             <h2>What We Offer</h2>
             <ul>
-                <li>**Vast Product Selection:** Explore our extensive catalog featuring thousands of products across various categories.</li>
-                <li>**Quality Assurance:** We carefully select our suppliers and products to ensure high standards of quality.</li>
-                <li>**Competitive Prices:** We work hard to bring you the best deals and value for your money.</li>
-                <li>**Secure Shopping Experience:** Your security is our priority. We use advanced encryption and secure payment gateways.</li>
-                <li>**Fast & Reliable Delivery:** We partner with trusted logistics providers to ensure your orders reach you quickly and safely.</li>
-                <li>**Customer Satisfaction:** Our dedicated customer support team is always ready to assist you with any queries or concerns.</li>
+                <li>Vast Product Selection: Explore our extensive catalog featuring thousands of products across various categories.</li>
+                <li>Quality Assurance: We carefully select our suppliers and products to ensure high standards of quality.</li>
+                <li>Competitive Prices: We work hard to bring you the best deals and value for your money.</li>
+                <li>Secure Shopping Experience: Your security is our priority. We use advanced encryption and secure payment gateways.</li>
+                <li>Fast & Reliable Delivery: We partner with trusted logistics providers to ensure your orders reach you quickly and safely.</li>
+                <li>Customer Satisfaction: Our dedicated customer support team is always ready to assist you with any queries or concerns.</li>
             </ul>
 
             <h2>Our Vision</h2>
@@ -170,10 +134,6 @@ $canonical_url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             <p>Thank you for choosing <?php echo $brandName; ?>. We look forward to serving you!</p>
         </section>
     </main>
-
-    <!-- The why-choose-us section is typically for the homepage.
-         If you want it here, you'd need to add its HTML and CSS.
-         For an 'About Us' page, it's usually omitted or replaced with specific company info. -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
