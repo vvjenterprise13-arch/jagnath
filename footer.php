@@ -55,11 +55,11 @@ $footer_fullAddress = $footer_contact_settings['full_address'] ?? 'India';
                 </div>
             </div>
             <?php endif; ?>
-            <a class="nav-link" href="#" style="color: #212121;"><i class="bi bi-info-circle-fill"></i> About Us</a>
-            <a class="nav-link" href="#" style="color: #212121;"><i class="bi bi-telephone-fill"></i> Contact Us</a>
-            <hr class="my-2">
-            <a class="nav-link" href="#" style="color: #212121;"><i class="bi bi-truck"></i> Shipping Policy</a>
-            <a class="nav-link" href="#" style="color: #212121;"><i class="bi bi-box-arrow-left"></i> Return Policy</a>
+            <a class="nav-link" href="/about-us" style="color: #212121;"><i class="bi bi-info-circle-fill"></i> About Us</a>
+<a class="nav-link" href="/contact-us" style="color: #212121;"><i class="bi bi-telephone-fill"></i> Contact Us</a>
+<hr class="my-2">
+<a class="nav-link" href="/shipping-policy" style="color: #212121;"><i class="bi bi-truck"></i> Shipping Policy</a>
+<a class="nav-link" href="/return-policy" style="color: #212121;"><i class="bi bi-box-arrow-left"></i> Return Policy</a>
         </nav>
     </div>
 </div>
