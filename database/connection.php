@@ -48,8 +48,6 @@ class DbSessionHandler implements SessionHandlerInterface {
     }
 }
 
-// session_start() PEHLA register karvo - warning fix
 if ($conn) {
     session_set_save_handler(new DbSessionHandler($conn), true);
 }
-// NOTE: session_start() drekk file ma CONNECTION INCLUDE PACHI j call karvo
