@@ -347,10 +347,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<?php include('footer.php'); ?>
 </body>
 </html>
-<?php
-// Include the footer file here.
-// This will render the offcanvas menu and the footer content.
-include('footer.php');
-?>
