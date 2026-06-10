@@ -29,7 +29,6 @@ if ($conn) {
             }
         }
     }
-    $conn->close();
 }
 
 $order_id = $_GET['oid'] ?? 'N/A';
