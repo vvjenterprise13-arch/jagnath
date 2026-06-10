@@ -74,12 +74,12 @@ $footer_fullAddress = $footer_contact_settings['full_address'] ?? 'India';
             <div class="col-md-3 mb-3 mb-md-0">
                 <h5>Quick Links</h5>
                 <ul class="list-unstyled">
-                    <li><a href="#" class="text-white-50">About Us</a></li>
-                    <li><a href="#" class="text-white-50">Contact Us</a></li>
-                    <li><a href="#" class="text-white-50">Privacy Policy</a></li>
-                    <li><a href="#" class="text-white-50">Terms & Conditions</a></li>
-                    <li><a href="#" class="text-white-50">Shipping Policy</a></li>
-                    <li><a href="#" class="text-white-50">Return & Refund Policy</a></li>
+                  <li><a href="/about-us" class="text-white-50">About Us</a></li>
+<li><a href="/contact-us" class="text-white-50">Contact Us</a></li>
+<li><a href="/privacy-policy" class="text-white-50">Privacy Policy</a></li>
+<li><a href="/about-us" class="text-white-50">Terms & Conditions</a></li>
+<li><a href="/shipping-policy" class="text-white-50">Shipping Policy</a></li>
+<li><a href="/return-policy" class="text-white-50">Return & Refund Policy</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
