@@ -1,8 +1,9 @@
 <?php
+include('database/connection.php');
 session_start();
 ob_start(); 
 
-include('database/connection.php');
+
 
 function get_cached_query_result($conn, $sql, $types, $params, $cache_file = null, $ttl = null) {
     if (!$conn) return [];
