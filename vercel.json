@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "*.php", "use": "vercel-php@0.6.0" }
+  ],
+  "routes": [
+    { "src": "/load_products",        "dest": "load_products.php" },
+    { "src": "/get_cart_details",     "dest": "get_cart_details.php" },
+    { "src": "/add_to_cart",          "dest": "add_to_cart.php" },
+    { "src": "/remove_from_cart",     "dest": "remove_from_cart.php" },
+    { "src": "/update_cart_quantity", "dest": "update_cart_quantity.php" },
+    { "src": "/cart",                 "dest": "cart.php" },
+    { "src": "/address",              "dest": "address.php" },
+    { "src": "/order-summary",        "dest": "order-summary.php" },
+    { "src": "/payment",              "dest": "payment.php" },
+    { "src": "/singlepageview",       "dest": "singlepageview.php" },
+    { "src": "/category_products",    "dest": "category_products.php" },
+    { "src": "/thankyou",             "dest": "thankyou.php" },
+    { "src": "/(.*)\\.php",           "dest": "/$1.php" },
+    { "src": "/(.*)",                 "dest": "index.php" }
+  ]
+}
