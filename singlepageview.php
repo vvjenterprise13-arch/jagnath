@@ -124,8 +124,6 @@ if ($stmt_low) {
 }
 
 
-// Close the database connection after all queries are done
-$conn->close();
 
 // ===================================================================
 //              વેરિયેબલ્સ સેટઅપ (Variable Setup)
