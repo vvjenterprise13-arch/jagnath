@@ -7,11 +7,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Start the session
-session_start();
-
-// Include database connection
 include('database/connection.php');
+session_start();
 
 // ===================================================================
 //              યુટિલિટી ફંક્શન્સ (Utility Functions)
