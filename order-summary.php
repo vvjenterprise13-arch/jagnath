@@ -1,9 +1,6 @@
 <?php
 include('database/connection.php');
 session_start();
-ob_start(); 
-
-
 
 function get_cached_query_result($conn, $sql, $types, $params, $cache_file = null, $ttl = null) {
     if (!$conn) return [];
@@ -44,14 +41,12 @@ if ($creds_result && $fetch_creds = mysqli_fetch_assoc($creds_result)) {
 $address = $_SESSION['address'];
 $cart_items = $_SESSION['cart'];
 $product_ids = array_keys($cart_items);
-$id_string = implode(',', array_map('intval', $product_ids));
 $products_from_db = [];
 
-if (!empty($id_string)) {
+if (!empty($product_ids)) {
     $sql = "SELECT * FROM products WHERE id IN (" . implode(',', array_fill(0, count($product_ids), '?')) . ")";
     $types = str_repeat('i', count($product_ids));
-    $cart_hash = md5($id_string);
-    $cached_products = get_cached_query_result($conn, $recommended_sql, $types, $params);
+    $cached_products = get_cached_query_result($conn, $sql, $types, $product_ids);
     foreach ($cached_products as $item) {
         $products_from_db[$item['id']] = $item;
     }
@@ -104,13 +99,11 @@ if (isset($products_from_db[$last_product_id])) {
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
-    <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-67HSHXN9DV"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-67HSHXN9DV');
 </script>
     <title>Order Summary</title>
@@ -120,13 +113,11 @@ if (isset($products_from_db[$last_product_id])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
    <style>
     body { background-color: #f1f2f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size: 13px; }
-    
     .page-header { background-color: #fff; padding: 10px 16px; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
     .header-content { display: flex; align-items: center; gap: 16px; }
     .back-arrow { color: #212121; text-decoration: none; font-size: 24px; }
     .header-logo { height: 32px; width: auto; }
     .header-title { font-size: 17px; font-weight: 500; margin: 0; }
-    
     .main-content { background-color: #fff; }
     .card-section { border-bottom: 8px solid #f1f2f4; padding: 12px 16px; background: #fff; }
     .progress-stepper { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
@@ -153,13 +144,11 @@ if (isset($products_from_db[$last_product_id])) {
     .actions-container { display: flex; align-items: center; gap: 16px; }
     .remove-link { font-weight: 500; text-transform: uppercase; color: #dc3545; text-decoration: none; font-size: 12px; }
     .address-block p { word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
-    
     .suggestions-section { padding: 16px; background-color: #fff; }
     .suggestions-title { font-size: 16px; font-weight: 500; color: #212121; }
     .suggestions-subtitle { font-size: 13px; color: #878787; margin-bottom: 16px; }
-    .suggestions-scroll { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; }
+    .suggestions-scroll { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; -ms-overflow-style: none; scrollbar-width: none; }
     .suggestions-scroll::-webkit-scrollbar { display: none; }
-    .suggestions-scroll { -ms-overflow-style: none; scrollbar-width: none; }
     .suggested-product-card { min-width: 150px; width: 150px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; background-color: #fff; }
     .suggested-product-card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 8px; }
     .suggested-product-card .product-name { font-size: 13px; height: 36px; overflow: hidden; line-height: 1.3; color: #212121; }
@@ -171,7 +160,7 @@ if (isset($products_from_db[$last_product_id])) {
 
     <header class="page-header">
         <div class="header-content">
-            <a href="address.php" class="back-arrow"><i class="bi bi-arrow-left"></i></a>
+            <a href="address" class="back-arrow"><i class="bi bi-arrow-left"></i></a>
             <img src="<?php echo htmlspecialchars($pwebsite); ?>/assets/catogary/logo.png" alt="Logo" class="header-logo">
             <h4 class="header-title">Order Summary</h4>
         </div>
@@ -185,12 +174,14 @@ if (isset($products_from_db[$last_product_id])) {
         </div>
         <div class="card-section address-block">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0 fw-bold">Deliver to:</h6><a href="address.php" class="change-btn">Change</a>
+                <h6 class="mb-0 fw-bold">Deliver to:</h6>
+                <a href="address" class="change-btn">Change</a>
             </div>
             <p class="mb-1 fw-bold"><?php echo htmlspecialchars($address['name'] ?? ''); ?> <span class="address-type-tag"><?php echo strtoupper(htmlspecialchars($address['address_type'] ?? '')); ?></span></p>
             <p class="text-muted small mb-1"><?php echo htmlspecialchars($address['flat'] ?? '') . ', ' . htmlspecialchars($address['area'] ?? '') . ', ' . htmlspecialchars($address['city'] ?? ''); ?></p>
             <p class="text-muted small mb-0"><?php echo htmlspecialchars($address['number'] ?? ''); ?></p>
         </div>
+
         <div class="card-section">
         <?php foreach ($processed_cart as $pid => $product): ?>
             <div class="product-card mb-4">
@@ -203,12 +194,12 @@ if (isset($products_from_db[$last_product_id])) {
                         <span class="text-success fw-bold small ms-2"><?php echo htmlspecialchars($product['discount']); ?>% off</span>
                     </div>
                     <div class="actions-container">
-                        <select class="form-select form-select-sm w-auto" onchange="location = 'update_cart_quantity.php?pid=<?php echo $pid; ?>&qty=' + this.value;">
+                        <select class="form-select form-select-sm w-auto" onchange="location = 'update_cart_quantity?pid=<?php echo $pid; ?>&qty=' + this.value;">
                             <?php for($i=1; $i<=10; $i++): ?>
                                 <option value="<?php echo $i; ?>" <?php if($product['quantity'] == $i) echo 'selected'; ?>>Qty: <?php echo $i; ?></option>
                             <?php endfor; ?>
                         </select>
-                        <a href="update_cart_quantity.php?pid=<?php echo $pid; ?>&qty=0" class="remove-link">Remove</a>
+                        <a href="update_cart_quantity?pid=<?php echo $pid; ?>&qty=0" class="remove-link">Remove</a>
                     </div>
                     <?php if($product['free_quantity'] > 0): ?>
                         <div class="mt-2 small text-success fw-bold" style="font-size: 10px; background-color: #eaf5ec; padding: 8px 12px; border-radius: 5px; border-left: 5px solid #198754;">
@@ -220,14 +211,11 @@ if (isset($products_from_db[$last_product_id])) {
         <?php endforeach; ?>
         </div>
 
-        <?php
-        if ($recommendation_category) {
-            $safe_category = $recommendation_category;
+        <?php if ($recommendation_category):
             $rec_sql = "SELECT * FROM products WHERE category = ? AND id NOT IN (" . implode(',', array_fill(0, count($product_ids), '?')) . ") ORDER BY RAND() LIMIT 10";
-            $types = "s" . str_repeat('i', count($product_ids));
-            $params = array_merge([$safe_category], $product_ids);
-            $recommended_array = get_cached_query_result($conn, $recommended_sql, $types, $params);
-
+            $rec_types = "s" . str_repeat('i', count($product_ids));
+            $rec_params = array_merge([$recommendation_category], $product_ids);
+            $recommended_array = get_cached_query_result($conn, $rec_sql, $rec_types, $rec_params);
             if (!empty($recommended_array)):
         ?>
             <section class="suggestions-section card-section">
@@ -249,10 +237,7 @@ if (isset($products_from_db[$last_product_id])) {
                 <?php endforeach; ?>
                 </div>
             </section>
-        <?php
-            endif; 
-        }
-        ?>
+        <?php endif; endif; ?>
 
         <div class="card-section">
             <div class="price-details-card p-3">
@@ -273,22 +258,18 @@ if (isset($products_from_db[$last_product_id])) {
                 <del class="text-muted small d-block">₹<?php echo number_format($total_mrp); ?></del>
                 <span class="footer-price">₹<?php echo number_format($final_amount); ?></span>
             </div>
-            
             <form action="<?php echo htmlspecialchars($form_action_url); ?>" method="POST" style="width: 50%; margin: 0;">
                 <input type="hidden" name="final_amount" value="<?php echo htmlspecialchars($final_amount); ?>">
                 <input type="hidden" name="mobile_number" value="<?php echo htmlspecialchars($address['number'] ?? ''); ?>">
-                
                 <?php if ($is_payment_configured): ?>
                     <button type="submit" class="continue-btn w-100">Continue</button>
                 <?php else: ?>
-                    <button type="button" class="continue-btn w-100" disabled>Payment Not Available</button>
+                    <a href="payment" class="continue-btn w-100 d-block text-center text-decoration-none">Continue</a>
                 <?php endif; ?>
             </form>
         </div>
     </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-<?php
-ob_end_flush();
-?>
