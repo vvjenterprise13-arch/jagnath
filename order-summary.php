@@ -99,12 +99,14 @@ if (isset($products_from_db[$last_product_id])) {
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-67HSHXN9DV"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NYXCXE4YSR"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-67HSHXN9DV');
+
+  gtag('config', 'G-NYXCXE4YSR');
 </script>
     <title>Order Summary</title>
     <meta charset="UTF-8">
