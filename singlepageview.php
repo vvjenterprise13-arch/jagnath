@@ -1,190 +1,126 @@
 <?php
-// ===================================================================
-//              CONFIGURATION & INITIALIZATION
-// ===================================================================
-
-// Turn on error reporting for development
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include('database/connection.php');
 session_start();
 
-// ===================================================================
-//              યુટિલિટી ફંક્શન્સ (Utility Functions)
-// ===================================================================
-
-/**
- * Checks if the user agent string indicates a mobile device.
- * @return bool True if it's a mobile device, false otherwise.
- */
 function isMobileDevice() {
     if (!isset($_SERVER["HTTP_USER_AGENT"])) return false;
     return preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $_SERVER["HTTP_USER_AGENT"]);
 }
 
-// ===================================================================
-//              પેજ લોજીક શરૂ (Start of Page Logic)
-// ===================================================================
-
-// Get and sanitize product ID from URL
 $id = isset($_GET['pid']) ? (int)$_GET['pid'] : 0;
 
-// ===================================================================
-//              ડેટા પુનઃપ્રાપ્તિ (Data Retrieval)
-// ===================================================================
-
-// Check database connection
 if (!$conn) {
     http_response_code(500);
     die("Database connection failed. Please try again later.");
 }
 
-// વેબસાઇટ URL મેળવો
 $pwebsite = '';
-$site_sql = "SELECT site FROM credentials LIMIT 1";
-$site_result = $conn->query($site_sql);
-if ($site_result) { // Check if query was successful
-    $site_data = $site_result->fetch_all(MYSQLI_ASSOC);
-    if (!empty($site_data) && isset($site_data[0]['site'])) {
-        $pwebsite = rtrim($site_data[0]['site'], '/');
-    }
-} else {
-    // Log error or handle gracefully
-    error_log("Error retrieving site credentials: " . $conn->error);
+$site_result = $conn->query("SELECT site FROM credentials LIMIT 1");
+if ($site_result) {
+    $site_row = $site_result->fetch_assoc();
+    if ($site_row) { $pwebsite = rtrim($site_row['site'], '/'); }
 }
 
-
-// પ્રોડક્ટ ડેટા મેળવો
 $product_data = [];
-// Prepare statement for product data
-$product_sql = "SELECT * FROM products WHERE id = ?";
-$stmt_prod = $conn->prepare($product_sql);
-
+$stmt_prod = $conn->prepare("SELECT * FROM products WHERE id = ?");
 if ($stmt_prod) {
     $stmt_prod->bind_param("i", $id);
     $stmt_prod->execute();
-    $product_result = $stmt_prod->get_result();
-    $product_data = $product_result->fetch_all(MYSQLI_ASSOC);
+    $product_data = $stmt_prod->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt_prod->close();
 } else {
-    // Handle prepare statement error
     http_response_code(500);
-    die("Internal server error: Could not prepare product query.");
+    die("Internal server error.");
 }
 
-
-// ===================================================================
-//      START: આ એરર માટેનો મુખ્ય સુધારો અહીં છે (MAIN FIX FOR THE ERROR IS HERE)
-// ===================================================================
-
-// Handle product not found - પ્રોડક્ટને એક્સેસ કરતા પહેલા અહીં તપાસો
-if (empty($product_data) || !is_array($product_data) || count($product_data) === 0) {
+if (empty($product_data)) {
     http_response_code(404);
-    die("આ પ્રોડક્ટ હવે ઉપલબ્ધ નથી. (ID: " . htmlspecialchars($id) . ")");
+    die("આ પ્રોડક્ટ હવે ઉપલબ્ધ નથી.");
 }
 
-// હવે ખાતરી છે કે પ્રોડક્ટ મળી છે, તેથી આપણે તેને સુરક્ષિત રીતે એક્સેસ કરી શકીએ છીએ.
 $item = $product_data[0];
-
-// ===================================================================
-//      END: એરર માટેનો સુધારો અહીં પૂરો થાય છે
-// ===================================================================
-
 $category = htmlspecialchars($item['category'] ?? '');
-$pid = (int)$item['id']; // Ensure pid is always an int, derived from the found item.
+$pid = (int)$item['id'];
 
-// સંબંધિત પ્રોડક્ટ્સ અને અન્ય ડેટા મેળવો
 $recommended_products = [];
-$rec_sql = "SELECT id, name, total, price, image FROM products WHERE category = ? AND id != ? ORDER BY RAND() LIMIT 6";
-$stmt_rec = $conn->prepare($rec_sql);
+$stmt_rec = $conn->prepare("SELECT id, name, total, price, image FROM products WHERE category = ? AND id != ? ORDER BY RAND() LIMIT 6");
 if ($stmt_rec) {
     $stmt_rec->bind_param("si", $category, $pid);
     $stmt_rec->execute();
-    $rec_result = $stmt_rec->get_result();
-    $recommended_products = $rec_result->fetch_all(MYSQLI_ASSOC);
+    $recommended_products = $stmt_rec->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt_rec->close();
-} else {
-    error_log("Error preparing recommended products query: " . $conn->error);
 }
-
 
 $lowest_price_appliances = [];
 $appliances_category = 'Appliances';
-$low_sql = "SELECT id, name, total, price, image FROM products WHERE category = ? AND id != ? ORDER BY total ASC LIMIT 6";
-$stmt_low = $conn->prepare($low_sql);
+$stmt_low = $conn->prepare("SELECT id, name, total, price, image FROM products WHERE category = ? AND id != ? ORDER BY total ASC LIMIT 6");
 if ($stmt_low) {
     $stmt_low->bind_param("si", $appliances_category, $pid);
     $stmt_low->execute();
-    $low_result = $stmt_low->get_result();
-    $lowest_price_appliances = $low_result->fetch_all(MYSQLI_ASSOC);
+    $lowest_price_appliances = $stmt_low->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt_low->close();
-} else {
-    error_log("Error preparing lowest price appliances query: " . $conn->error);
 }
 
-
-
-// ===================================================================
-//              વેરિયેબલ્સ સેટઅપ (Variable Setup)
-// ===================================================================
-
-// Using null coalescing operator (??) for robustness
-$productName = htmlspecialchars($item['name'] ?? 'Unknown Product');
-$productDetails = $item['description'] ?? 'No description available.';
-$productPrice = (float)($item['total'] ?? 0.00);
+$productName     = htmlspecialchars($item['name'] ?? 'Unknown Product');
+$productDetails  = $item['description'] ?? 'No description available.';
+$productPrice    = (float)($item['total'] ?? 0.00);
 $productDiscount = (int)($item['discount'] ?? 0);
-$productOff = (float)($item['price'] ?? $productPrice); // Default to productPrice if 'price' is not set
-$productImage = htmlspecialchars($item['image'] ?? 'default.jpg');
-$rating = (float)($item['star'] ?? 4.5);
-$productSizes = trim($item['size'] ?? '');
+$productOff      = (float)($item['price'] ?? $productPrice);
+$productImage    = htmlspecialchars($item['image'] ?? 'default.jpg');
+$rating          = (float)($item['star'] ?? 4.5);
+$productSizes    = trim($item['size'] ?? '');
 
 $metaDescription = htmlspecialchars(mb_substr(strip_tags($productDetails), 0, 155, 'UTF-8')) . '...';
-$canonical_url = $pwebsite . '/singlepageview?pid=' . $pid;
+$canonical_url   = $pwebsite . '/singlepageview?pid=' . $pid;
 
 $bank_offers = [
-    ['title' => 'Bank Offer', 'description' => 'Get ₹25 instant discount on first UPI txns on order of ₹250 and above'],
-    ['title' => 'Bank Offer', 'description' => '5% Cashback on Axis Bank Card'],
+    ['title' => 'Bank Offer',    'description' => 'Get ₹25 instant discount on first UPI txns on order of ₹250 and above'],
+    ['title' => 'Bank Offer',    'description' => '5% Cashback on Axis Bank Card'],
     ['title' => 'Special Price', 'description' => 'Get extra 15% off (price inclusive of cashback/coupon)']
 ];
 
-$delivery_date = date("l, d M", strtotime("+".rand(1, 2)." days"));
-$people_ordered = rand(1500, 4000);
-$stock_left = rand(1, 10);
-$is_in_cart = isset($_SESSION['cart'][$pid]);
+$delivery_date          = date("l, d M", strtotime("+".rand(1, 2)." days"));
+$people_ordered         = rand(1500, 4000);
+$stock_left             = rand(1, 10);
+$is_in_cart             = isset($_SESSION['cart'][$pid]);
 $total_ratings_and_reviews = rand(10000, 100000);
 
 $base_5_star = ($rating - 3.5) * 50;
 $rating_percentages = [
-    5 => max(20, $base_5_star + rand(0, 10)), 4 => max(15, (100 - $base_5_star) / 2 + rand(-5, 5)),
-    3 => max(5, 15 + rand(-5, 5)), 2 => max(2, 5 + rand(-2, 2)), 1 => max(1, 3 + rand(-1, 1))
+    5 => max(20, $base_5_star + rand(0, 10)),
+    4 => max(15, (100 - $base_5_star) / 2 + rand(-5, 5)),
+    3 => max(5,  15 + rand(-5, 5)),
+    2 => max(2,  5  + rand(-2, 2)),
+    1 => max(1,  3  + rand(-1, 1))
 ];
 $total_percent = array_sum($rating_percentages);
-// Normalize percentages to sum up to 100
-if ($total_percent > 0) { // Avoid division by zero
+if ($total_percent > 0) {
     foreach ($rating_percentages as &$percent) { $percent = round(($percent / $total_percent) * 100); }
-    // Adjust for rounding errors
-    while(array_sum($rating_percentages) > 100) { $rating_percentages[array_rand([1,2,3])]--; }
-    while(array_sum($rating_percentages) < 100) { $rating_percentages[array_rand([4,5])]++; }
+    while (array_sum($rating_percentages) > 100) { $rating_percentages[array_rand([1,2,3])]--; }
+    while (array_sum($rating_percentages) < 100) { $rating_percentages[array_rand([4,5])]++; }
 }
 
-
 $review_templates = [
-    ['name' => 'Rohan Sharma', 'location' => 'Mumbai, Maharashtra', 'title' => 'Excellent Product!', 'review' => 'The quality is amazing, exactly as described. Very happy with the purchase. Highly recommended!'],
-    ['name' => 'Priya Patel', 'location' => 'Ahmedabad, Gujarat', 'title' => 'Value for Money', 'review' => 'Good product for the price. Delivery was on time and packaging was secure. Satisfied.'],
+    ['name' => 'Rohan Sharma', 'location' => 'Mumbai, Maharashtra', 'title' => 'Excellent Product!',  'review' => 'The quality is amazing, exactly as described. Very happy with the purchase. Highly recommended!'],
+    ['name' => 'Priya Patel',  'location' => 'Ahmedabad, Gujarat',  'title' => 'Value for Money',     'review' => 'Good product for the price. Delivery was on time and packaging was secure. Satisfied.'],
 ];
 $generated_reviews = [];
-for($i=0; $i<10; $i++){
+for ($i = 0; $i < 10; $i++) {
     $template = $review_templates[array_rand($review_templates)];
     $generated_reviews[] = [
-        'name' => $template['name'], 'location' => $template['location'], 'title' => $template['title'],
-        'review' => $template['review'], 'rating' => mt_rand(41, 50) / 10, 'date' => date('d M Y', strtotime('-'.rand(5, 90).' days'))
+        'name'   => $template['name'],
+        'title'  => $template['title'],
+        'review' => $template['review'],
+        'rating' => mt_rand(41, 50) / 10,
+        'date'   => date('d M Y', strtotime('-'.rand(5, 90).' days'))
     ];
 }
 
 function render_compact_3d_product_carousel($title, $subtitle, $products_array, $pwebsite) {
-    if (!empty($products_array)) {
-?>
+    if (!empty($products_array)) { ?>
         <section class="compact-showcase-section">
             <div class="compact-section-header">
                 <h5 class="fw-bold"><?php echo htmlspecialchars($title); ?></h5>
@@ -192,26 +128,27 @@ function render_compact_3d_product_carousel($title, $subtitle, $products_array, 
             </div>
             <div class="compact-carousel-container">
                 <div class="compact-carousel">
-                    <?php foreach ($products_array as $item): ?>
+                    <?php foreach ($products_array as $prod): ?>
                         <div class="compact-product-card">
-                            <a href="singlepageview?pid=<?php echo htmlspecialchars($item['id']); ?>" class="product-link">
-                                <div class="compact-image-wrapper"><img src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . ($item['image'] ?? 'default.jpg')); ?>" alt="<?php echo htmlspecialchars($item['name'] ?? 'Product Image'); ?>" class="product-image" loading="lazy"></div>
+                            <a href="singlepageview?pid=<?php echo (int)$prod['id']; ?>" class="product-link">
+                                <div class="compact-image-wrapper">
+                                    <img src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . ($prod['image'] ?? 'default.jpg')); ?>" alt="<?php echo htmlspecialchars($prod['name'] ?? ''); ?>" class="product-image" loading="lazy">
+                                </div>
                                 <div class="compact-info-wrapper">
-                                    <p class="product-name"><?php echo htmlspecialchars($item['name'] ?? 'Product Name'); ?></p>
+                                    <p class="product-name"><?php echo htmlspecialchars($prod['name'] ?? ''); ?></p>
                                     <div class="price-line">
-                                        <span class="fw-bold">₹<?php echo number_format((float)($item['total'] ?? 0)); ?></span>
-                                        <del class="ms-2 text-muted small">₹<?php echo number_format((float)($item['price'] ?? 0)); ?></del>
+                                        <span class="fw-bold">₹<?php echo number_format((float)($prod['total'] ?? 0)); ?></span>
+                                        <del class="ms-2 text-muted small">₹<?php echo number_format((float)($prod['price'] ?? 0)); ?></del>
                                     </div>
                                 </div>
                             </a>
-                            <a href="add_to_cart.php?pid=<?php echo htmlspecialchars($item['id']); ?>" class="compact-add-to-cart-btn">Add to cart</a>
+                            <a href="add_to_cart?pid=<?php echo (int)$prod['id']; ?>" class="compact-add-to-cart-btn">Add to cart</a>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </section>
-<?php
-    }
+    <?php }
 }
 ?>
 <!DOCTYPE html>
@@ -267,64 +204,81 @@ function render_compact_3d_product_carousel($title, $subtitle, $products_array, 
         .delivery-info { display: flex; align-items: center; padding: 16px 0; border-top: 1px solid #f0f0f0; margin-top: 2px; margin-left: 16px; }
         .delivery-text .free { color: #388e3c; font-weight: bold; }
         .delivery-text .old-fee { text-decoration: line-through; }
-        .offers-container { margin-top: 24px; border-top: 1px solid #f0f0f0; padding-top: 16px; }
+        .offers-container { margin-top: 24px; border-top: 1px solid #f0f0f0; padding-top: 16px; padding-left: 16px; }
         .offer-item { display: flex; align-items: flex-start; margin-bottom: 12px; font-size: 14px; }
         .offer-icon { color: #388e3c; margin-right: 5px; margin-top: 5px; font-size: 18px; }
-        .offer-text .offer-title { font-weight: 500; margin-right: 5px;}
+        .offer-text .offer-title { font-weight: 500; margin-right: 5px; }
         .offer-text .offer-link { color: #2874f0; text-decoration: none; font-weight: 500; margin-left: 4px; }
     </style>
 </head>
-<body class="singleproductview">
+<body>
 <div class="main-container">
     <header class="page-header">
         <a href="#" class="back-arrow" onclick="history.back(); return false;"><i class="material-icons">arrow_back</i></a>
-        <img src="<?php echo htmlspecialchars($pwebsite) ?>/assets/catogary/logo.png" alt="Logo" style="width: 40px; height: 40px;">
+        <img src="<?php echo htmlspecialchars($pwebsite) ?>/assets/catogary/logo.png" alt="Logo" style="width:40px;height:40px;">
         <div class="header-cart">
-             <a href="cart">
+            <a href="cart">
                 <i class="material-icons">shopping_cart</i>
-                <?php $cart_count = (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) ? count($_SESSION['cart']) : 0; if ($cart_count > 0) { echo '<span class="badge bg-danger rounded-pill position-absolute top-12 start-100 translate-middle">' . htmlspecialchars($cart_count) . '</span>'; } ?>
+                <?php
+                $cart_count = (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) ? count($_SESSION['cart']) : 0;
+                if ($cart_count > 0) {
+                    echo '<span class="badge bg-danger rounded-pill position-absolute" style="font-size:10px;">' . $cart_count . '</span>';
+                }
+                ?>
             </a>
         </div>
     </header>
+
     <main>
         <div class="singlecard">
             <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner">
-                    <div class="carousel-item active"><img class="d-block w-100" src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . $productImage); ?>" alt="<?php echo htmlspecialchars($productName); ?>"></div>
-                    <?php for ($i = 2; $i <= 10; $i++): $image_column = 'image' . $i; if (!empty($item[$image_column])): ?>
-                        <div class="carousel-item"><img class="d-block w-100" src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . htmlspecialchars($item[$image_column])); ?>" alt="<?php echo htmlspecialchars($productName . ' - View ' . $i); ?>"></div>
+                    <div class="carousel-item active">
+                        <img class="d-block w-100" src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . $productImage); ?>" alt="<?php echo $productName; ?>">
+                    </div>
+                    <?php for ($i = 2; $i <= 10; $i++):
+                        $image_column = 'image' . $i;
+                        if (!empty($item[$image_column])): ?>
+                        <div class="carousel-item">
+                            <img class="d-block w-100" src="<?php echo htmlspecialchars($pwebsite . '/assets/uploads/' . htmlspecialchars($item[$image_column])); ?>" alt="<?php echo $productName . ' - View ' . $i; ?>">
+                        </div>
                     <?php endif; endfor; ?>
                 </div>
             </div>
         </div>
+
         <div class="product-details-container">
-            <div class="urgency-banner"><?php echo htmlspecialchars($people_ordered); ?> people ordered this in the last 30 minutes</div>
-            <div class="stock-alert">Only <span class="text-danger"><?php echo htmlspecialchars($stock_left); ?></span> Left in Stock</div>
-            <?php if (!empty($productSizes)): $availableSizes = array_map('trim', explode(',', $productSizes)); ?>
+            <div class="urgency-banner"><?php echo $people_ordered; ?> people ordered this in the last 30 minutes</div>
+            <div class="stock-alert">Only <span class="text-danger"><?php echo $stock_left; ?></span> Left in Stock</div>
+
+            <?php if (!empty($productSizes)):
+                $availableSizes = array_map('trim', explode(',', $productSizes)); ?>
                 <div class="size-selector-container mb-3">
                     <h6 class="fw-bold mb-2">Select Size:</h6>
                     <div class="d-flex flex-wrap gap-2">
                         <?php foreach ($availableSizes as $index => $size): ?>
                             <div>
-                                <input type="radio" class="btn-check" name="selected_size" id="size-<?php echo htmlspecialchars($size); ?>" value="<?php echo htmlspecialchars($size); ?>" autocomplete="off" <?php if($index == 0) echo 'checked'; ?>>
+                                <input type="radio" class="btn-check" name="selected_size" id="size-<?php echo htmlspecialchars($size); ?>" value="<?php echo htmlspecialchars($size); ?>" autocomplete="off" <?php if ($index == 0) echo 'checked'; ?>>
                                 <label class="btn btn-outline-secondary" for="size-<?php echo htmlspecialchars($size); ?>"><?php echo htmlspecialchars($size); ?></label>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
             <?php endif; ?>
-            <h1 class="product-title"><?php echo htmlspecialchars($productName); ?></h1>
+
+            <h1 class="product-title"><?php echo $productName; ?></h1>
             <div class="d-flex align-items-center mt-2">
-                <span class="rating-box"><?php echo htmlspecialchars(number_format($rating, 1)); ?> <i class="material-icons" style="font-size:12px;">star</i></span>
-                <span class="ratings-count"><?php echo htmlspecialchars(number_format($total_ratings_and_reviews)); ?> Ratings</span>
+                <span class="rating-box"><?php echo number_format($rating, 1); ?> <i class="material-icons" style="font-size:12px;">star</i></span>
+                <span class="ratings-count"><?php echo number_format($total_ratings_and_reviews); ?> Ratings</span>
             </div>
             <img src="<?php echo htmlspecialchars($pwebsite) ?>/assets/images/plue-fassured.png" alt="F-Assured" class="fassured-logo">
             <div class="price-container mt-3 d-flex align-items-center">
-                <span class="final-price">₹<?php echo htmlspecialchars(number_format($productPrice)); ?></span>
-                <del class="mrp">₹<?php echo htmlspecialchars(number_format($productOff)); ?></del>
-                <span class="discount"><?php echo htmlspecialchars($productDiscount); ?>% Off</span>
+                <span class="final-price">₹<?php echo number_format($productPrice); ?></span>
+                <del class="mrp">₹<?php echo number_format($productOff); ?></del>
+                <span class="discount"><?php echo $productDiscount; ?>% Off</span>
             </div>
         </div>
+
         <div class="offers-container">
             <h6 class="fw-bold mb-3">Available offers</h6>
             <?php foreach ($bank_offers as $offer): ?>
@@ -338,24 +292,25 @@ function render_compact_3d_product_carousel($title, $subtitle, $products_array, 
                 </div>
             <?php endforeach; ?>
         </div>
+
         <div class="delivery-info">
             <span class="material-icons me-3">local_shipping</span>
             <div class="delivery-text">
-                <div>
-                    <span class="free">FREE Delivery</span>
-                    <del class="old-fee text-muted">₹75</del>
-                </div>
-                <div>Delivery by • <span class="fw-bold"><?php echo htmlspecialchars($delivery_date); ?></span></div>
+                <div><span class="free">FREE Delivery</span> <del class="old-fee text-muted">₹75</del></div>
+                <div>Delivery by • <span class="fw-bold"><?php echo $delivery_date; ?></span></div>
             </div>
         </div>
+
         <?php
-            render_compact_3d_product_carousel('Suggested for You', 'Based on Your Activity', $recommended_products, $pwebsite);
-            render_compact_3d_product_carousel('Lowest Price of the Year', 'On Home Appliances', $lowest_price_appliances, $pwebsite);
+        render_compact_3d_product_carousel('Suggested for You', 'Based on Your Activity', $recommended_products, $pwebsite);
+        render_compact_3d_product_carousel('Lowest Price of the Year', 'On Home Appliances', $lowest_price_appliances, $pwebsite);
         ?>
+
         <div class="product-description-section">
             <h4 class="fw-bold">Product Details</h4>
-            <div class="text-muted mt-2"><?php echo $productDetails; /* Already sanitized by strip_tags in meta description, but good to be careful. If $productDetails directly from DB, apply htmlspecialchars here if it might contain unescaped user input */ ?></div>
+            <div class="text-muted mt-2"><?php echo $productDetails; ?></div>
         </div>
+
         <div class="reviews-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="fw-bold m-0">Ratings & Reviews</h3>
@@ -363,35 +318,38 @@ function render_compact_3d_product_carousel($title, $subtitle, $products_array, 
             </div>
             <div class="rating-summary-section">
                 <div class="overall-rating text-center">
-                    <div class="rating-value"><?php echo htmlspecialchars(number_format($rating, 1)); ?> <i class="material-icons align-middle" style="color:#388e3c;">star</i></div>
-                    <p class="text-muted small"><?php echo htmlspecialchars(number_format($total_ratings_and_reviews)); ?> Ratings</p>
+                    <div class="rating-value"><?php echo number_format($rating, 1); ?> <i class="material-icons align-middle" style="color:#388e3c;">star</i></div>
+                    <p class="text-muted small"><?php echo number_format($total_ratings_and_reviews); ?> Ratings</p>
                 </div>
                 <div class="rating-breakdown flex-grow-1">
                     <?php foreach ($rating_percentages as $star => $percent): ?>
                         <div class="d-flex align-items-center small">
-                            <span><?php echo htmlspecialchars($star); ?>★</span>
-                            <div class="progress mx-2 flex-grow-1" style="height:6px;"><div class="progress-bar bg-success" style="width: <?php echo htmlspecialchars($percent); ?>%;"></div></div>
-                            <span class="text-muted"><?php echo htmlspecialchars(number_format(floor(($percent / 100) * $total_ratings_and_reviews))); ?></span>
+                            <span><?php echo $star; ?>★</span>
+                            <div class="progress mx-2 flex-grow-1" style="height:6px;">
+                                <div class="progress-bar bg-success" style="width:<?php echo $percent; ?>%;"></div>
+                            </div>
+                            <span class="text-muted"><?php echo number_format(floor(($percent / 100) * $total_ratings_and_reviews)); ?></span>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
             <div class="review-list">
-                <?php foreach($generated_reviews as $review): ?>
-                <div class="review-card">
-                    <div class="d-flex align-items-center mb-2">
-                        <span class="rating-box me-2"><?php echo htmlspecialchars(number_format($review['rating'], 1)); ?> <i class="material-icons" style="font-size:12px;">star</i></span>
-                        <h5 class="fw-bold mb-0 small"><?php echo htmlspecialchars($review['title']); ?></h5>
+                <?php foreach ($generated_reviews as $review): ?>
+                    <div class="review-card">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="rating-box me-2"><?php echo number_format($review['rating'], 1); ?> <i class="material-icons" style="font-size:12px;">star</i></span>
+                            <h5 class="fw-bold mb-0 small"><?php echo htmlspecialchars($review['title']); ?></h5>
+                        </div>
+                        <p class="small"><?php echo htmlspecialchars($review['review']); ?></p>
+                        <p class="text-muted small m-0"><?php echo htmlspecialchars($review['name']); ?> | <?php echo htmlspecialchars($review['date']); ?></p>
                     </div>
-                    <p class="small"><?php echo htmlspecialchars($review['review']); ?></p>
-                    <p class="text-muted small m-0"><?php echo htmlspecialchars($review['name']); ?> | <?php echo htmlspecialchars($review['date']); ?></p>
-                </div>
                 <?php endforeach; ?>
             </div>
         </div>
     </main>
 </div>
-<div style="height: 60px;"></div>
+
+<div style="height:60px;"></div>
 <div class="footerbuttonbuy d-flex">
     <?php if ($is_in_cart): ?>
         <a href="cart" class="btn1 btncart w-50 text-center text-decoration-none d-flex align-items-center justify-content-center">Go To Cart</a>
@@ -400,65 +358,43 @@ function render_compact_3d_product_carousel($title, $subtitle, $products_array, 
     <?php endif; ?>
     <button id="buyNowBtn" class="btn1 btnbuy w-50">Buy Now</button>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     function handleCartAction(actionType) {
-        let productId = <?php echo json_encode($pid); ?>; // Use json_encode for safer JS injection
+        let productId = <?php echo json_encode($pid); ?>;
         let selectedSizeEl = document.querySelector('input[name="selected_size"]:checked');
         let selectedSize = selectedSizeEl ? selectedSizeEl.value : '';
-        let url = `add_to_cart.php?pid=${productId}&size=${encodeURIComponent(selectedSize)}`;
+        let url = `add_to_cart?pid=${productId}&size=${encodeURIComponent(selectedSize)}`;
         if (actionType === 'buy') { url += '&buy_now=true'; }
-
         fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    // Attempt to read error message from server if available
-                    return response.text().then(text => { throw new Error(`Network response was not ok: ${text}`); });
-                }
-                return response.text();
-            })
-            .then(data => {
-                // You might want to parse 'data' if 'add_to_cart.php' returns JSON
-                // console.log(data); // For debugging
+            .then(response => { if (!response.ok) throw new Error('Network error'); return response.text(); })
+            .then(() => {
                 if (actionType === 'add') { window.location.reload(); }
                 else if (actionType === 'buy') { window.location.href = 'address'; }
             })
-            .catch(error => { console.error('Error:', error); alert('Failed to add to cart or buy now. Please try again.'); }); // User feedback
+            .catch(error => { console.error('Error:', error); alert('Failed. Please try again.'); });
     }
     const addToCartBtn = document.getElementById('addToCartBtn');
     if (addToCartBtn) addToCartBtn.addEventListener('click', () => handleCartAction('add'));
     const buyNowBtn = document.getElementById('buyNowBtn');
     if (buyNowBtn) buyNowBtn.addEventListener('click', () => handleCartAction('buy'));
-    const autoScrollCarousels = document.querySelectorAll('.compact-carousel');
-    function initAutoScroll(carousel) {
-        if (carousel.children.length === 0) return;
-        // Clone nodes only if there are enough children to fill the carousel area
-        // This prevents infinite loop or broken layout if too few products
-        const initialChildrenCount = carousel.children.length;
-        if (initialChildrenCount > 0) {
-            for (let i = 0; i < initialChildrenCount; i++) {
-                carousel.appendChild(carousel.children[i].cloneNode(true));
-            }
-        }
 
-        let animationFrameId = null;
-        const scrollSpeed = 0.7;
-        const scrollStep = () => {
-            carousel.scrollLeft += scrollSpeed;
-            // When half of the original content has scrolled past, reset to the beginning
-            if (carousel.scrollLeft >= carousel.scrollWidth / 2) {
-                carousel.scrollLeft = 0;
-            }
-            animationFrameId = requestAnimationFrame(scrollStep);
+    document.querySelectorAll('.compact-carousel').forEach(carousel => {
+        if (carousel.children.length === 0) return;
+        const count = carousel.children.length;
+        for (let i = 0; i < count; i++) { carousel.appendChild(carousel.children[i].cloneNode(true)); }
+        let animId = null;
+        const step = () => {
+            carousel.scrollLeft += 0.7;
+            if (carousel.scrollLeft >= carousel.scrollWidth / 2) carousel.scrollLeft = 0;
+            animId = requestAnimationFrame(step);
         };
-        const startScrolling = () => { if (!animationFrameId) { animationFrameId = requestAnimationFrame(scrollStep); } };
-        const stopScrolling = () => { if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } };
-        carousel.addEventListener('mouseenter', stopScrolling);
-        carousel.addEventListener('mouseleave', startScrolling);
-        startScrolling();
-    }
-    autoScrollCarousels.forEach(carousel => { initAutoScroll(carousel); });
+        carousel.addEventListener('mouseenter', () => { cancelAnimationFrame(animId); animId = null; });
+        carousel.addEventListener('mouseleave', () => { if (!animId) animId = requestAnimationFrame(step); });
+        animId = requestAnimationFrame(step);
+    });
 });
 </script>
 </body>
