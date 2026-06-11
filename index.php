@@ -74,7 +74,15 @@ function generate_star_rating($rating) {
 <!DOCTYPE html>
 <html lang="gu-IN">
 <head>
-  
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NYXCXE4YSR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NYXCXE4YSR');
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shop Online for Fashion, Electronics & More | <?php echo $brandName; ?></title>
