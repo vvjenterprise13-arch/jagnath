@@ -99,8 +99,8 @@ $rating_percentages = [
 $total_percent = array_sum($rating_percentages);
 if ($total_percent > 0) {
     foreach ($rating_percentages as &$percent) { $percent = round(($percent / $total_percent) * 100); }
-    while (array_sum($rating_percentages) > 100) { $rating_percentages[array_rand([1,2,3])]--; }
-    while (array_sum($rating_percentages) < 100) { $rating_percentages[array_rand([4,5])]++; }
+   while(array_sum($rating_percentages) > 100) { $k=[1,2,3]; $rating_percentages[$k[array_rand($k)]]--; }
+while(array_sum($rating_percentages) < 100) { $k=[4,5]; $rating_percentages[$k[array_rand($k)]]++; }
 }
 
 $review_templates = [
